@@ -22,12 +22,19 @@
  *   `window.confirm`. Probing spends real credit, so a confirmation stays — but
  *   it belongs next to the thing it acts on.
  *
- * The popover surface follows `dsh-ds-balance`'s balance popover, which itself
- * copies the host's own stat dialog: a portal to `document.body`, positioned by
- * the host's `useAnchoredPosition`, dismissed by the host's
+ * The popover surface follows `dsh-ds-balance`'s balance popover: a portal to
+ * `document.body`, anchored through **CSS anchor positioning** (`anchor-name` on
+ * the trigger, `position-anchor` on the panel), dismissed by the host's
  * `useDismissOnOutsidePointer`, skinned with `--dsw-specific-menu` plus
  * `--dsw-menu-backdrop-filter` (the pair the host requires together — fill
  * alone is "translucent but not frosted").
+ *
+ * Why CSS anchoring and not a JS measuring hook: DSH 0.2.2-alpha.2 removed
+ * `useAnchoredPosition` and `AnchoredPositionOptions` from
+ * `@deepseek-ai/dsh-client-ui-primitives` (upgrade guide
+ * `v0.2.2-alpha.2/css-anchored-menus`); `Menu` replaced `getAnchorRect` with
+ * `anchorRef` / `anchorPoint` for the same reason. The browser places the panel,
+ * so there is no measure-then-place frame and no hidden first paint.
  *
  * **The filter must not sit on the panel itself**: a non-`none`
  * `backdrop-filter` makes the element the containing block for its fixed
@@ -48,12 +55,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  Button,
-  Tooltip,
-  useAnchoredPosition,
-  useDismissOnOutsidePointer,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Tooltip, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ModelDirectory } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { cardVariantFor } from './variants.ts'
 import type { WorkBuddyCardVariant } from './variants.ts'
@@ -72,15 +74,21 @@ export interface WorkBuddyProbeControlProps {
 const RECONCILE_MS = 60_000
 
 /**
- * What the popover renders on its first frame: positioned but invisible, so the
- * anchor hook can measure it before deciding where it really goes. Copied
- * verbatim from the host's stat dialog via `dsh-ds-balance`.
+ * Gap between the control and the popover, and the viewport margin it keeps.
+ *
+ * Declared here because the CSS that uses them cannot: the stylesheet reads them
+ * back through `--wb-probe-gap` / `--wb-probe-margin`, set on the panel inline,
+ * so geometry stays a single source in TypeScript.
  */
-const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
-
-/** Gap between the control and the popover, and the viewport margin it keeps. */
 const POPOVER_GAP = 8
 const POPOVER_MARGIN = 12
+
+/**
+ * Placement is owned by `probe-control.module.css`: `.wrapper` declares
+ * `anchor-name: --wb-probe-anchor` and `.panel` consumes it through
+ * `position-anchor`. Both halves live in one file so the pair cannot drift, and
+ * this component renders no positioning prop at all.
+ */
 
 /** Pick the model's recorded observation out of the probe section. */
 function resultFor(status: WorkBuddyWebStatus, model: string): WorkBuddyWebProbeModel | undefined {
@@ -299,20 +307,14 @@ function ModelProbe({
     }
   }
 
-  // Both hooks live above the `visible` early return: hooks may not be skipped,
-  // and a control that comes and goes with the selection must keep a stable
-  // hook order across renders.
-  const position = useAnchoredPosition({
-    open,
-    anchorRef: rootRef,
-    panelRef,
-    side: 'top',
-    gap: POPOVER_GAP,
-    margin: POPOVER_MARGIN,
-  })
   // The panel is portalled, so it is no longer a DOM descendant of the anchor:
   // without `panelRef` a click inside the panel would count as "outside" and
   // close it.
+  //
+  // Placement is the browser's job now: the trigger carries `anchor-name` and the
+  // panel carries `position-anchor` plus the CSS that derives its position from
+  // the anchor rect. There is no measuring hook to call — DSH 0.2.2-alpha.2
+  // removed `useAnchoredPosition` from the primitives package.
   useDismissOnOutsidePointer(
     rootRef,
     open,
@@ -365,6 +367,9 @@ function ModelProbe({
       {/* Closed means unmounted: a panel left in the DOM is a `position: fixed`
           hit-testing box that would sit over the composer after it closed.
 
+          No `style` prop for placement: the browser resolves the CSS anchor the
+          trigger declares, so there is no hidden measuring frame to override.
+
           There is no close button and no cancel: the panel explains one action and
           holds the one button that takes it, so the ways out are the ways out of
           any popover — click away, press Escape, or click the icon again. */}
@@ -373,7 +378,12 @@ function ModelProbe({
             <section
               ref={panelRef}
               className={css.panel}
-              style={position ?? MEASURE_STYLE}
+              style={
+                {
+                  '--wb-probe-gap': `${POPOVER_GAP}px`,
+                  '--wb-probe-margin': `${POPOVER_MARGIN}px`,
+                } as CSSProperties
+              }
               role="dialog"
               aria-label={t('probeLabel')}
             >

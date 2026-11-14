@@ -10,6 +10,9 @@
   display: inline-flex;
   position: relative;
   align-items: center;
+  /* The popover's CSS anchor. `.panel` reads it through `position-anchor`; the
+     pair lives in this one file so the two names cannot drift apart. */
+  anchor-name: --wb-probe-anchor;
 }
 
 /* Geometry copied value-for-value from the host sidebar's .iconButton, via
@@ -81,6 +84,23 @@
       panel's own stacking context. */
 .panel {
   position: fixed;
+  /* CSS anchor positioning: the browser resolves the trigger's rect for us.
+     DSH 0.2.2-alpha.2 removed `useAnchoredPosition` from the primitives package,
+     so a JS measure-then-place frame is no longer available — and none is
+     needed. Sits above the trigger with the gap and viewport margin the
+     component sets as `--wb-probe-gap` / `--wb-probe-margin`. */
+  position-anchor: --wb-probe-anchor;
+  bottom: calc(anchor(top) + var(--wb-probe-gap, 8px));
+  left: clamp(
+    var(--wb-probe-margin, 12px),
+    anchor(left),
+    calc(
+      100vw - var(--wb-probe-margin, 12px) -
+        min(360px, calc(100vw - 2 * var(--wb-probe-margin, 12px)))
+    )
+  );
+  /* No room above: fall back to hanging below the trigger. */
+  position-try-fallbacks: --wb-probe-below;
   isolation: isolate;
   z-index: 1100;
   box-sizing: border-box;
@@ -97,6 +117,14 @@
   line-height: 1.5;
   color: var(--dsw-alias-label-secondary);
   cursor: default;
+}
+
+@position-try --wb-probe-below {
+  position-area: none;
+  top: calc(anchor(bottom) + var(--wb-probe-gap, 8px));
+  bottom: auto;
+  align-self: safe start;
+  justify-self: safe start;
 }
 
 .panel::before {
