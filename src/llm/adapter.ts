@@ -36,11 +36,20 @@ export const WORKBUDDY_STREAM_IDLE_TIMEOUT_MS = 300_000
 
 /**
  * Image-request budgets at the dsh-llm-pi-ai defaults; the profile type made
- * them required in 0.1.1-rc.2. They bound requests to models whose catalog
- * entry declares `supportsImages`; text-only models never receive images.
+ * them required in 0.1.1-rc.2 and added the retained-count pair in 0.2.2-rc.1.
+ * They bound requests to models whose catalog entry declares `supportsImages`;
+ * text-only models never receive images.
+ *
+ * `maxRequestImages` / `imageOffloadCountQuantum` are new in the 0.2.2 cohort:
+ * pi-ai routes now offload the oldest history images once a request carries more
+ * than the retained count (upgrade guide `v0.2.2-alpha.2/pi-ai-request-image-count`).
+ * 50 images with a 10-image offload step are the shipped defaults, restated here
+ * because the resolved profile type carries no defaults of its own.
  */
 const REQUEST_IMAGE_BUDGETS = {
   maxRequestImageBytes: 20_971_520,
+  maxRequestImages: 50,
+  imageOffloadCountQuantum: 10,
   requestImagePixelBudget: 4_194_304,
   requestImageMaxBytes: 1_048_576,
 } as const
