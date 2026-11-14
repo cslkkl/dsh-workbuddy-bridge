@@ -430,8 +430,9 @@ interface HostVersionMention {
 
 /** 宿主下限：唯一真源是 `package.json`，所以这里读它，不写死。 */
 const HOST_FLOOR = String(pkg.engines.dsh ?? '').replace(/^>=\s*/, '')
-/** 文档通常只写下限的数值段（`0.1.7`），清单里却带预发布段（`0.1.7-rc.2`）。 */
-const HOST_VERSION = new RegExp(`${HOST_FLOOR.replace(/-.*$/, '').replace(/\./g, '\\.')}(?![\\d.])`)
+/** 文档通常只写下限的数值段（`0.2.2`），清单里却是区间加预发布段（`>=0.2.2-rc.1 <0.3.0`）。 */
+const FLOOR_MINOR = HOST_FLOOR.replace(/-.*$/, '')
+const HOST_VERSION = new RegExp(`${FLOOR_MINOR.replace(/\./g, '\\.')}(?![\\d.])`)
 /** 点名宿主。大小写敏感：小写 `dsh` 出现在命令与包名里，不是主语。 */
 const HOST_SUBJECT = /DSH|宿主|Harness|deepseek-harness/
 /** 明确标为历史。 */
@@ -508,25 +509,30 @@ describe('文档不抄实测值', () => {
   })
 
   it('上面那条提示的判据有牙齿（反向控制）', () => {
+    // 反向控制用的样本一律从清单真值推导：宿主抬线时这里跟着走，
+    // 否则抬线后这几条会以「样本不再是下限值」的形式假绿。
+    const floorMinor = FLOOR_MINOR
     // 复述宿主下限、不给出处 → 命中（会提示），并报出命中的值。
-    expect(needsSource('本仓只支持 DSH 0.1.7 线，不做跨代兼容。')).toMatchObject({
-      value: '0.1.7',
+    expect(needsSource(`本仓只支持 DSH ${floorMinor} 线，不做跨代兼容。`)).toMatchObject({
+      value: floorMinor,
     })
     // 同段补上出处、或标为历史 → 不提示。
     expect(
-      needsSource('本仓只支持 DSH 0.1.7 线；下限见 package.json 的 engines.dsh。'),
+      needsSource(`本仓只支持 DSH ${floorMinor} 线；下限见 package.json 的 engines.dsh。`),
     ).toBeUndefined()
-    expect(needsSource('先例（2026-09-25）：实装宿主 0.1.7-rc.2 里两者都存在。')).toBeUndefined()
-    // 插件自己的版本号不在管辖内：判据是清单里的真值，不是 `0.1.\d+` 的形状。
+    expect(
+      needsSource(`先例（2026-09-25）：实装宿主 ${floorMinor}-rc.2 里两者都存在。`),
+    ).toBeUndefined()
+    // 插件自己的版本号不在管辖内：判据是清单里的真值，不是 `0.\d+\.\d+` 的形状。
     // 下面两条就是 2026-10-01 那次误报的形状（旧版本号 + 普通词「需要」）。
     expect(needsSource('版本 `0.1.0`；尚未发布到 npm。')).toBeUndefined()
     expect(needsSource('- [x] 首次发布 `0.1.0` 已完成\n- [ ] 这里不再需要走那条路')).toBeUndefined()
     // 值对但没点名宿主 → 也不提示：那可能只是在提一个版本号。
-    expect(needsSource('插件 `0.1.7` 版改了接缝。')).toBeUndefined()
+    expect(needsSource(`插件 \`${floorMinor}\` 版改了接缝。`)).toBeUndefined()
     // 真值来自清单，不是写死的形状。
-    expect(HOST_VERSION.test('宿主 0.1.7-rc.2')).toBe(true)
+    expect(HOST_VERSION.test(`宿主 ${floorMinor}-rc.2`)).toBe(true)
     expect(HOST_VERSION.test('宿主 0.1.0')).toBe(false)
     // 自检用的谓词必须看得到「宿主 + 下限值」，哪怕那段已经带了出处。
-    expect(mentionsHostVersion('本仓只支持 DSH 0.1.7；下限见 package.json。')).toBe(true)
+    expect(mentionsHostVersion(`本仓只支持 DSH ${floorMinor}；下限见 package.json。`)).toBe(true)
   })
 })
