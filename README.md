@@ -122,7 +122,7 @@ dsh plugin --profile web exec dsh-workbuddy-bridge logout          # 清理插�
 
 ## 兼容与已知限制
 
-- 只支持 **DSH `0.1.7` 线**；下限以 [package.json](package.json) 的 `engines.dsh` 为准，不做跨代兼容。
+- 只支持 **DSH `0.2.2` 线**；下限以 [package.json](package.json) 的 `engines.dsh` 为准，不做跨代兼容。
 - **凭据发现按平台**：macOS 直接支持；Windows 依次探测 Local 与 Roaming AppData（实测可用）；
   WSL 优先读挂载的 Windows 用户目录。找不到时用 `WORKBUDDY_AUTH_FILE`（国际版 `WORKBUDDY_AI_AUTH_FILE`）指定。
 - **国际版目录来自 App 界面接口**（私有实现，上游改动可能失效）；国内版走官方 CLI 同款接口。

@@ -134,7 +134,7 @@ touch the desktop app's own sign-in.
 
 ## Compatibility and known limits
 
-- Supports the **DSH `0.1.7` line** only; the floor lives in [package.json](package.json) `engines.dsh` — no
+- Supports the **DSH `0.2.2` line** only; the floor lives in [package.json](package.json) `engines.dsh` — no
   cross-generation compatibility.
 - **Credential discovery is per platform**: macOS supported directly; Windows probes Local then Roaming
   AppData (tested working); WSL reads the mounted Windows user profile first. When nothing is found, point
